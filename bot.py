@@ -1,6 +1,8 @@
 import os
 import logging
 from datetime import datetime
+from threading import Thread
+from flask import Flask
 from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ConversationHandler
 from telegram.request import HTTPXRequest
@@ -20,8 +22,27 @@ from admin import (
     FULL_IMAGE, FULL_CAPTION, FULL_BUTTON_TEXT, FULL_BUTTON_URL, FULL_DURATION, FULL_CONFIRM
 )
 
+# Create Flask app for health checks
+flask_app = Flask(__name__)
+
+@flask_app.route('/')
+def home():
+    return "🤖 Lyrics Hub Bot is running!"
+
+@flask_app.route('/health')
+def health():
+    return "OK", 200
+
+def run_web_server():
+    """Run Flask web server for Render health checks"""
+    port = int(os.environ.get('PORT', 8080))
+    flask_app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
+
 # Setup logging
 log_file = os.path.join(LOGS_DIR, f'bot_{datetime.now().strftime("%Y%m%d")}.log')
+os.makedirs(LOGS_DIR, exist_ok=True)
+os.makedirs("data", exist_ok=True)
+
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO,
@@ -33,11 +54,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 async def post_init(application):
-    """Run after application is initialized and event loop is running"""
-    global deletion_manager, broadcast_manager
-    # Start cleaner after event loop is running
-    await deletion_manager.start_cleaner()
-    logger.info("Deletion manager cleaner started")
+    """Run after application is initialized"""
+    global deletion_manager
+    if deletion_manager:
+        await deletion_manager.start_cleaner()
+    logger.info("Post-initialization complete")
 
 def main():
     global deletion_manager, broadcast_manager
@@ -102,10 +123,16 @@ def main():
     app.add_handler(CallbackQueryHandler(handle_callback, pattern="^(page_|lyric_|cancel_search)"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, search_songs))
     
+    # Start web server in background thread (for Render)
+    web_thread = Thread(target=run_web_server, daemon=True)
+    web_thread.start()
+    logger.info("Web server started on port " + os.environ.get('PORT', '8080'))
+    
     logger.info("="*50)
     logger.info("🤖 Lyrics Hub Bot Started Successfully!")
     logger.info("="*50)
     
+    # Start polling (this blocks)
     app.run_polling(allowed_updates=Update.ALL_TYPES, poll_interval=1.0)
 
 if __name__ == "__main__":
