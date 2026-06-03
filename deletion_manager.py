@@ -12,7 +12,7 @@ class DeletionManager:
         self.bot = bot
         self.pending = {}
         self.load_pending()
-        self.start_cleaner()
+        # Don't start cleaner in __init__, wait for event loop
 
     def load_pending(self):
         try:
@@ -34,7 +34,13 @@ class DeletionManager:
         key = f"{chat_id}:{message_id}"
         self.pending[key] = delete_at_timestamp
         self.save_pending()
-        asyncio.create_task(self._schedule_delete(chat_id, message_id, delete_at_timestamp))
+        # Schedule deletion without asyncio.create_task (use asyncio.run_coroutine_threadsafe if needed)
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self._schedule_delete(chat_id, message_id, delete_at_timestamp))
+        except RuntimeError:
+            # No running loop, schedule later
+            asyncio.get_event_loop().create_task(self._schedule_delete(chat_id, message_id, delete_at_timestamp))
 
     async def _schedule_delete(self, chat_id, message_id, delete_at):
         now = time_module.time()
@@ -51,7 +57,8 @@ class DeletionManager:
             del self.pending[key]
             self.save_pending()
 
-    def start_cleaner(self):
+    async def start_cleaner(self):
+        """Start cleaner after event loop is running"""
         for key, ts in list(self.pending.items()):
             if ts > time_module.time():
                 chat_id, message_id = key.split(':')

@@ -32,7 +32,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+async def post_init(application):
+    """Run after application is initialized and event loop is running"""
+    global deletion_manager, broadcast_manager
+    # Start cleaner after event loop is running
+    await deletion_manager.start_cleaner()
+    logger.info("Deletion manager cleaner started")
+
 def main():
+    global deletion_manager, broadcast_manager
+    
     # Load users
     load_users()
     
@@ -44,7 +53,7 @@ def main():
         pool_timeout=20.0,
         http_version="1.1"
     )
-    app = Application.builder().token(BOT_TOKEN).request(request).build()
+    app = Application.builder().token(BOT_TOKEN).request(request).post_init(post_init).build()
     
     # Initialize managers
     deletion_manager = DeletionManager(app.bot)

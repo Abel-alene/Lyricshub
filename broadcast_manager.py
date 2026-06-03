@@ -8,10 +8,6 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from config import BROADCAST_FILE
 from database import get_all_users
-from deletion_manager import DeletionManager
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.constants import ParseMode
-
 
 logger = logging.getLogger(__name__)
 
@@ -51,10 +47,13 @@ class BroadcastManager:
                     now = time_module.time()
                     for bc in self.scheduled_broadcasts[:]:
                         if bc['time'] <= now:
-                            asyncio.run_coroutine_threadsafe(
-                                self.send_broadcast(bc),
-                                asyncio.get_event_loop()
-                            )
+                            # Schedule in the event loop
+                            try:
+                                loop = asyncio.get_event_loop()
+                            except RuntimeError:
+                                loop = asyncio.new_event_loop()
+                                asyncio.set_event_loop(loop)
+                            loop.create_task(self.send_broadcast(bc))
                             self.scheduled_broadcasts.remove(bc)
                             self.save_broadcasts()
                     time_module.sleep(30)
