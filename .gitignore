@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Sensitive data
+.env
+*.env
+data/
+users.json
+*.json
+
+# Logs
+logs/*.log
+
+# Temporary files
+temp/
+*.tmp
+
+# Deployment
+Procfile
+render.yaml
