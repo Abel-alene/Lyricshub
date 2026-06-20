@@ -14,7 +14,7 @@ Created by **Abel Alene** - [@xoiam](https://t.me/xoiam)
 ### 1. Clone the repository
 ```bash
 git clone https://github.com/Abel-alene/Lyricshub
-cd lyricshubbot
+cd lyricshub
 ```
 
 2. Install dependencies
